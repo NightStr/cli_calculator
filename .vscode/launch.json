@@ -9,32 +9,18 @@
             "request": "launch",
             "name": "Debug executable 'reverse_polish'",
             "cargo": {
+                "setupCommands": [
+                    {
+                        "t": "settings set target.input-path ${workspaceFolder}/debug_input"
+                    }
+                ],
                 "args": [
                     "build",
-                    "--bin=reverse_polish",
-                    "--package=reverse_polish"
+                    "--bin=calculator",
+                    "--package=calculator"
                 ],
                 "filter": {
-                    "name": "reverse_polish",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'reverse_polish'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=reverse_polish",
-                    "--package=reverse_polish"
-                ],
-                "filter": {
-                    "name": "reverse_polish",
+                    "name": "calculator",
                     "kind": "bin"
                 }
             },
