@@ -1,5 +1,3 @@
-use std::fs::read_to_string;
-
 #[derive(Debug)]
 pub struct OperationToken {
     name: String,
