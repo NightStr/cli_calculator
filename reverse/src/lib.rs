@@ -21,12 +21,18 @@ impl OperationToken {
     }
 
     pub fn execute(&self, op1: i64, op2: i64) -> Result<i64, String> {
-        match &self.name {
-            name if name == "+" => Ok(op1 + op2),
-            name if name == "-" => Ok(op1 - op2),
-            name if name == "*" => Ok(op1 * op2),
-            name if name == "/" => Ok(op1 / op2),
-            name => Err(format!("Operation \"{}\"is not allowed", name)),
+        let value = match &self.name {
+            name if name == "+" => op1.checked_add(op2),
+            name if name == "-" => op1.checked_sub(op2),
+            name if name == "*" => op1.checked_mul(op2),
+            name if name == "/" => op1.checked_div(op2),
+            name => {
+                return Err(format!("Operation \"{}\"is not allowed", name));
+            }
+        };
+        match value {
+            Some(value) => Ok(value),
+            None => Err(format!("{} {} {}. Overflow detected.", op1, self.name, op2)),
         }
     }
 }
