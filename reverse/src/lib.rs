@@ -156,7 +156,7 @@ pub fn parse(exp: &String) -> Result<Vec<Token>, String> {
                     }
                 }
             }
-            _ if ['+', '*', '/', '(', ')', '-'].contains(&ch) => {
+            _ if ['+', '*', '/', '-'].contains(&ch) => {
                 match previous_token_type {
                     TokenType::Operation if ch == '-' => {
                         tokens.push(Token::new_operation('('.to_string()));
@@ -174,6 +174,9 @@ pub fn parse(exp: &String) -> Result<Vec<Token>, String> {
                     }
                 }
                 previous_token_type = TokenType::Operation;
+            }
+            _ if ['(', ')'].contains(&ch) => {
+                tokens.push(Token::new_operation(ch.to_string()));
             }
             _ => {
                 return Err(format!("Operation {} is not allowed", ch));
