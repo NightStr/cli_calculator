@@ -1,4 +1,4 @@
-use reverse::reverse::reverse;
+use reverse;
 use std::io;
 use std::io::Write;
 use std::process::exit;
@@ -10,12 +10,15 @@ fn main() {
 
     io::stdout().flush().unwrap();
     io::stdin().read_line(&mut exp).unwrap();
-    let result = reverse(&exp);
+    let result = reverse::eval(&exp.trim().to_string());
+
     match result {
-        Ok(n) => println!("Result: {}", n),
-        Err(err) => {
-            eprintln!("{}", err);
+        Ok(result) => {
+            println!("Result {}", result);
+        }
+        Err(e) => {
+            eprintln!("{}", e);
             exit(1);
         }
-    };
+    }
 }
