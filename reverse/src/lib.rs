@@ -1,3 +1,5 @@
+use regex::Regex;
+
 #[derive(Debug)]
 pub struct OperationToken {
     name: String,
@@ -51,6 +53,7 @@ impl NumberToken {
     }
 }
 
+#[derive(PartialEq)]
 pub enum TokenType {
     Operation,
     Number,
@@ -115,78 +118,93 @@ impl Token {
     }
 }
 
-pub fn parse(exp: &String) -> Result<Vec<Token>, String> {
-    let mut previous_token_type = TokenType::Operation;
+fn number_parse(exp: &str) -> (Option<String>, &str) {
+    let exp = exp;
+    let re = Regex::new(r"^(\d)").unwrap();
+    let captures = match re.captures(&exp[..]) {
+        Some(v) => v,
+        None => return (None, exp),
+    };
+    let captured = &captures[0];
+    (Some(captured.to_string()), &exp[captured.len()..exp.len()])
+}
+
+fn operation_parse(exp: &str) -> (Option<String>, &str) {
+    let exp = exp;
+    let re = Regex::new(r"^([+, \-, \*, //])").unwrap();
+    let captures = match re.captures(&exp[..]) {
+        Some(v) => v,
+        None => return (None, exp),
+    };
+    let captured = &captures[0];
+    (Some(captured.to_string()), &exp[captured.len()..exp.len()])
+}
+
+fn parentheses_parse(exp: &str) -> (Option<String>, &str) {
+    let exp = exp;
+    let re = Regex::new(r"^([\(, \)])").unwrap();
+    let captures = match re.captures(&exp[..]) {
+        Some(v) => v,
+        None => return (None, exp),
+    };
+    let captured = &captures[0];
+    (Some(captured.to_string()), &exp[captured.len()..exp.len()])
+}
+
+pub fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
+    let mut exp = exp.clone();
     let mut tokens: Vec<Token> = Vec::new();
-    let mut need_close = false;
 
-    for ch in exp.chars() {
-        match ch {
-            '0'...'9' => {
-                let current_number = ch.to_digit(10).unwrap() as i64;
-                match previous_token_type {
-                    TokenType::Operation => {
-                        tokens.push(Token::new_number(current_number));
-                        previous_token_type = TokenType::Number;
-                    }
-                    TokenType::Number => {
-                        let last_token = tokens.pop();
+    while exp.len() > 0 {
+        if let (Some(n), new_exp) = number_parse(&exp[..]) {
+            exp = new_exp.to_string();
+            tokens.push(Token::new_number(n.parse().unwrap()));
+        } else if let (Some(n), new_exp) = operation_parse(&exp[..]) {
+            exp = new_exp.to_string();
+            tokens.push(Token::new_operation(n));
+        } else if let (Some(n), new_exp) = parentheses_parse(&exp[..]) {
+            exp = new_exp.to_string();
+            tokens.push(Token::new_operation(n));
+        } else {
+            return Err(format!(
+                "Parsing error, expression: {} does not contain a valid token",
+                exp
+            ));
+        }
+    }
+    return Ok(tokens);
+}
 
-                        match last_token {
-                            Some(token) => match token.get_type().unwrap() {
-                                TokenType::Number => {
-                                    let number = token.get_number().unwrap();
-                                    if number > i64::max_value() / 10 - current_number {
-                                        return Err(
-                                            "Overflow detected. Value is too big".to_string()
-                                        );
-                                    }
-                                    tokens.push(Token::new_number(number * 10 + current_number));
-                                }
-                                _ => {
-                                    tokens.push(token);
-                                    tokens.push(Token::new_number(current_number));
-                                }
-                            },
-                            None => {
-                                tokens.push(Token::new_number(current_number));
-                            }
-                        };
-                        previous_token_type = TokenType::Number;
-                    }
-                }
-            }
-            _ if ['+', '*', '/', '-'].contains(&ch) => {
-                match previous_token_type {
-                    TokenType::Operation if ch == '-' => {
-                        tokens.push(Token::new_operation('('.to_string()));
-                        tokens.push(Token::new_number(-1));
-                        tokens.push(Token::new_operation('*'.to_string()));
-                        need_close = true;
-                    }
-                    TokenType::Number if need_close == true => {
-                        need_close = false;
-                        tokens.push(Token::new_operation(')'.to_string()));
-                        tokens.push(Token::new_operation(ch.to_string()));
-                    }
-                    _ => {
-                        tokens.push(Token::new_operation(ch.to_string()));
-                    }
+pub fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
+    let mut previous_token_type = TokenType::Operation;
+    let mut processed_tokens: Vec<Token> = Vec::new();
+    let mut need_close_parentheses: bool = false;
+    for token in tokens {
+        match token.get_type().unwrap() {
+            TokenType::Operation => {
+                if token.get_operation_name().unwrap() == "-"
+                    && previous_token_type == TokenType::Operation
+                {
+                    processed_tokens.push(Token::new_operation("(".to_string()));
+                    processed_tokens.push(Token::new_number(-1));
+                    processed_tokens.push(Token::new_operation("*".to_string()));
+                    need_close_parentheses = true;
+                } else {
+                    processed_tokens.push(token);
                 }
                 previous_token_type = TokenType::Operation;
             }
-            _ if ['(', ')'].contains(&ch) => {
-                tokens.push(Token::new_operation(ch.to_string()));
+            TokenType::Number => {
+                processed_tokens.push(token);
+                if need_close_parentheses {
+                    need_close_parentheses = false;
+                    processed_tokens.push(Token::new_operation(")".to_string()));
+                }
+                previous_token_type = TokenType::Number;
             }
-            _ => {
-                return Err(format!("Operation {} is not allowed", ch));
-            }
-        };
+        }
     }
-    if need_close == true {
-        tokens.push(Token::new_operation(')'.to_string()));
-    }
-    return Ok(tokens);
+    return Ok(processed_tokens);
 }
 
 fn clear(exp: &String) -> String {
@@ -257,15 +275,16 @@ fn calculate(postfix_exp: Vec<Token>) -> Result<i64, String> {
             }
         }
     }
-    if result.len() > 1 {
-        Err(format!("Fail evaluate a expression. Result: {:?}", result))
-    } else {
-        Ok(result.pop().unwrap())
+    match result.len() {
+        0 => Err("No calculation result".to_string()),
+        l if l > 1 => Err(format!("Fail evaluate a expression. Result: {:?}", result)),
+        _ => Ok(result.pop().unwrap()),
     }
 }
 
 pub fn eval(exp: &String) -> Result<i64, String> {
-    let parsed_exp = parse(&clear(exp))?;
-    let postfixed_exp = postfix(parsed_exp)?;
-    return calculate(postfixed_exp);
+    let mut tokens = tokenizing(&clear(exp))?;
+    tokens = parsing(tokens)?;
+    tokens = postfix(tokens)?;
+    return calculate(tokens);
 }
