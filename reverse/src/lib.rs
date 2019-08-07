@@ -1,4 +1,5 @@
 use regex::Regex;
+use rust_decimal::Decimal;
 
 #[derive(Debug)]
 struct OperationToken {
@@ -21,7 +22,7 @@ impl OperationToken {
         };
     }
 
-    pub fn execute(&self, op1: i64, op2: i64) -> Result<i64, String> {
+    pub fn execute(&self, op1: Decimal, op2: Decimal) -> Result<Decimal, String> {
         let value = match &self.name {
             name if name == "+" => op1.checked_add(op2),
             name if name == "-" => op1.checked_sub(op2),
@@ -40,14 +41,14 @@ impl OperationToken {
 
 #[derive(Debug)]
 struct NumberToken {
-    value: i64,
+    value: Decimal,
 }
 
 impl NumberToken {
-    pub fn new(value: i64) -> NumberToken {
+    pub fn new(value: Decimal) -> NumberToken {
         NumberToken { value }
     }
-    pub fn get_value(&self) -> &i64 {
+    pub fn get_value(&self) -> &Decimal {
         &self.value
     }
 }
@@ -94,7 +95,7 @@ struct Token {
 }
 
 impl Token {
-    pub fn new_number(number: i64) -> Token {
+    pub fn new_number(number: Decimal) -> Token {
         Token {
             op: None,
             number: Some(NumberToken::new(number)),
@@ -126,7 +127,7 @@ impl Token {
         }
     }
 
-    pub fn get_number(&self) -> Option<i64> {
+    pub fn get_number(&self) -> Option<Decimal> {
         match &self.number {
             Some(n) => Some(*n.get_value()),
             _ => None,
@@ -160,7 +161,7 @@ impl Token {
         panic!("Type of token is undefined");
     }
 
-    pub fn execute(&self, op1: i64, op2: i64) -> Result<i64, String> {
+    pub fn execute(&self, op1: Decimal, op2: Decimal) -> Result<Decimal, String> {
         match &self.op {
             Some(op) => op.execute(op1, op2),
             None => Err("Toke is not operation".to_string()),
@@ -180,7 +181,7 @@ fn parse_token<'a, 'b>(regexp: &'a str, exp: &'b str) -> (Option<String>, &'b st
 }
 
 fn number_parse(exp: &str) -> (Option<String>, &str) {
-    parse_token(r"^(\d+)", exp)
+    parse_token(r"^([\d, \.]+)", exp)
 }
 
 fn operation_parse(exp: &str) -> (Option<String>, &str) {
@@ -198,7 +199,7 @@ fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
     while exp.len() > 0 {
         if let (Some(n), new_exp) = number_parse(&exp[..]) {
             exp = new_exp.to_string();
-            let number: i64 = match n.parse() {
+            let number: Decimal = match n.parse() {
                 Ok(v) => v,
                 Err(e) => return Err(format!("{} {}", n, e)),
             };
@@ -238,7 +239,7 @@ fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
                     _ => {}
                 }
                 processed_tokens.push(Token::new_open_parenthesis());
-                processed_tokens.push(Token::new_number(-1));
+                processed_tokens.push(Token::new_number(Decimal::new(-1, 0)));
                 processed_tokens.push(Token::new_operation("*".to_string()));
                 need_close_parentheses = true;
             }
@@ -355,8 +356,8 @@ fn postfix(parsed_exp: Vec<Token>) -> Result<Vec<Token>, &'static str> {
     return Ok(postfix_tokens);
 }
 
-fn calculate(postfix_exp: Vec<Token>) -> Result<i64, String> {
-    let mut result: Vec<i64> = Vec::new();
+fn calculate(postfix_exp: Vec<Token>) -> Result<Decimal, String> {
+    let mut result: Vec<Decimal> = Vec::new();
     for token in postfix_exp {
         match token.get_type() {
             TokenType::Number => result.push(token.get_number().unwrap()),
@@ -375,7 +376,7 @@ fn calculate(postfix_exp: Vec<Token>) -> Result<i64, String> {
     }
 }
 
-pub fn eval(exp: &String) -> Result<i64, String> {
+pub fn eval(exp: &String) -> Result<Decimal, String> {
     let mut tokens = tokenizing(&clear(exp))?;
     tokens = parsing(tokens)?;
     tokens = postfix(tokens)?;
