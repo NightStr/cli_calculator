@@ -168,37 +168,27 @@ impl Token {
     }
 }
 
-fn number_parse(exp: &str) -> (Option<String>, &str) {
+fn parse_token<'a, 'b>(regexp: &'a str, exp: &'b str) -> (Option<String>, &'b str) {
     let exp = exp;
-    let re = Regex::new(r"^(\d+)").unwrap();
+    let re = Regex::new(regexp).unwrap();
     let captures = match re.captures(&exp[..]) {
         Some(v) => v,
         None => return (None, exp),
     };
     let captured = &captures[0];
     (Some(captured.to_string()), &exp[captured.len()..exp.len()])
+}
+
+fn number_parse(exp: &str) -> (Option<String>, &str) {
+    parse_token(r"^(\d+)", exp)
 }
 
 fn operation_parse(exp: &str) -> (Option<String>, &str) {
-    let exp = exp;
-    let re = Regex::new(r"^([+, \-, \*, //])").unwrap();
-    let captures = match re.captures(&exp[..]) {
-        Some(v) => v,
-        None => return (None, exp),
-    };
-    let captured = &captures[0];
-    (Some(captured.to_string()), &exp[captured.len()..exp.len()])
+    parse_token(r"^([+, \-, \*, //])", exp)
 }
 
 fn parentheses_parse(exp: &str) -> (Option<String>, &str) {
-    let exp = exp;
-    let re = Regex::new(r"^([\(, \)])").unwrap();
-    let captures = match re.captures(&exp[..]) {
-        Some(v) => v,
-        None => return (None, exp),
-    };
-    let captured = &captures[0];
-    (Some(captured.to_string()), &exp[captured.len()..exp.len()])
+    parse_token(r"^([\(, \)])", exp)
 }
 
 pub fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
