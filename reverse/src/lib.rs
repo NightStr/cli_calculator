@@ -275,11 +275,17 @@ fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
                 previous_token_type = TokenType::OpenedParenthesis;
             }
             TokenType::ClosedParenthesis => {
+                if previous_token_type == TokenType::Operation {
+                    return Err(format!("Invalid operation in position {}", pos));
+                }
                 processed_tokens.push(token);
                 previous_token_type = TokenType::ClosedParenthesis;
             }
         }
         pos += 1;
+    }
+    if previous_token_type == TokenType::Operation {
+        return Err("Invalid expression. Expression can't end on an operation".to_string());
     }
     return Ok(processed_tokens);
 }
