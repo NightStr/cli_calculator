@@ -1,7 +1,7 @@
 use regex::Regex;
 
 #[derive(Debug)]
-pub struct OperationToken {
+struct OperationToken {
     name: String,
 }
 
@@ -39,7 +39,7 @@ impl OperationToken {
 }
 
 #[derive(Debug)]
-pub struct NumberToken {
+struct NumberToken {
     value: i64,
 }
 
@@ -53,7 +53,7 @@ impl NumberToken {
 }
 
 #[derive(Debug)]
-pub struct ParenthesisToken {
+struct ParenthesisToken {
     t: TokenType,
 }
 
@@ -79,7 +79,7 @@ impl ParenthesisToken {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum TokenType {
+enum TokenType {
     Operation,
     Number,
     OpenedParenthesis,
@@ -87,7 +87,7 @@ pub enum TokenType {
 }
 
 #[derive(Debug)]
-pub struct Token {
+struct Token {
     op: Option<OperationToken>,
     number: Option<NumberToken>,
     parenthesis: Option<ParenthesisToken>,
@@ -191,7 +191,7 @@ fn parentheses_parse(exp: &str) -> (Option<String>, &str) {
     parse_token(r"^([\(, \)])", exp)
 }
 
-pub fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
+fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
     let mut exp = exp.clone();
     let mut tokens: Vec<Token> = Vec::new();
 
@@ -219,7 +219,7 @@ pub fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
     return Ok(tokens);
 }
 
-pub fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
+fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
     let mut previous_token_type = TokenType::Operation;
     let mut processed_tokens: Vec<Token> = Vec::new();
     let mut need_close_parentheses: bool = false;
