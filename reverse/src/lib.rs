@@ -198,7 +198,11 @@ fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
     while exp.len() > 0 {
         if let (Some(n), new_exp) = number_parse(&exp[..]) {
             exp = new_exp.to_string();
-            tokens.push(Token::new_number(n.parse().unwrap()));
+            let number: i64 = match n.parse() {
+                Ok(v) => v,
+                Err(e) => return Err(format!("{} {}", n, e)),
+            };
+            tokens.push(Token::new_number(number));
         } else if let (Some(n), new_exp) = operation_parse(&exp[..]) {
             exp = new_exp.to_string();
             tokens.push(Token::new_operation(n));
@@ -223,19 +227,36 @@ fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
     let mut previous_token_type = TokenType::Operation;
     let mut processed_tokens: Vec<Token> = Vec::new();
     let mut need_close_parentheses: bool = false;
+    let mut pos = 0;
     for token in tokens {
         match token.get_type() {
+            TokenType::Operation if token.get_operation_name().unwrap() == "-" => {
+                match previous_token_type {
+                    TokenType::Number | TokenType::ClosedParenthesis => {
+                        processed_tokens.push(Token::new_operation("+".to_string()))
+                    }
+                    _ => {}
+                }
+                processed_tokens.push(Token::new_open_parenthesis());
+                processed_tokens.push(Token::new_number(-1));
+                processed_tokens.push(Token::new_operation("*".to_string()));
+                need_close_parentheses = true;
+            }
             TokenType::Operation => {
                 match previous_token_type {
-                    TokenType::Operation
-                    | TokenType::OpenedParenthesis
-                    | TokenType::ClosedParenthesis
-                        if token.get_operation_name().unwrap() == "-" =>
-                    {
-                        processed_tokens.push(Token::new_open_parenthesis());
-                        processed_tokens.push(Token::new_number(-1));
-                        processed_tokens.push(Token::new_operation("*".to_string()));
-                        need_close_parentheses = true;
+                    TokenType::OpenedParenthesis if token.get_operation_name().unwrap() == "+" => {}
+                    TokenType::OpenedParenthesis => {
+                        return Err(format!(
+                        "Invalid expression. Operation {} is not allowed after opened parenthesis",
+                        token.get_operation_name().unwrap()
+                    ))
+                    }
+                    TokenType::Operation => {
+                        return Err(format!(
+                            "Invalid operation {} in position {}",
+                            token.get_operation_name().unwrap(),
+                            pos
+                        ))
                     }
                     _ => processed_tokens.push(token),
                 };
@@ -258,6 +279,7 @@ fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
                 previous_token_type = TokenType::ClosedParenthesis;
             }
         }
+        pos += 1;
     }
     return Ok(processed_tokens);
 }
