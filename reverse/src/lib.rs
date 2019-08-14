@@ -216,7 +216,7 @@ fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
             });
         } else {
             return Err(format!(
-                "Parsing error, expression: {} does not contain a valid token",
+                "Parsing error, expression: \"{}\" does not contain a valid token",
                 exp
             ));
         }
@@ -227,7 +227,6 @@ fn tokenizing(exp: &String) -> Result<Vec<Token>, String> {
 fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
     let mut previous_token_type = TokenType::Operation;
     let mut processed_tokens: Vec<Token> = Vec::new();
-    let mut need_close_parentheses: bool = false;
     let mut pos = 0;
     for token in tokens {
         match token.get_type() {
@@ -238,23 +237,21 @@ fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
                     }
                     _ => {}
                 }
-                processed_tokens.push(Token::new_open_parenthesis());
                 processed_tokens.push(Token::new_number(Decimal::new(-1, 0)));
                 processed_tokens.push(Token::new_operation("*".to_string()));
-                need_close_parentheses = true;
             }
             TokenType::Operation => {
                 match previous_token_type {
                     TokenType::OpenedParenthesis if token.get_operation_name().unwrap() == "+" => {}
                     TokenType::OpenedParenthesis => {
                         return Err(format!(
-                        "Invalid expression. Operation {} is not allowed after opened parenthesis",
+                        "Invalid expression. Operation \"{}\" is not allowed after opened parenthesis",
                         token.get_operation_name().unwrap()
                     ))
                     }
                     TokenType::Operation => {
                         return Err(format!(
-                            "Invalid operation {} in position {}",
+                            "Invalid operation \"{}\" in position {}",
                             token.get_operation_name().unwrap(),
                             pos
                         ))
@@ -265,10 +262,6 @@ fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
             }
             TokenType::Number => {
                 processed_tokens.push(token);
-                if need_close_parentheses {
-                    need_close_parentheses = false;
-                    processed_tokens.push(Token::new_closed_parenthesis());
-                }
                 previous_token_type = TokenType::Number;
             }
             TokenType::OpenedParenthesis => {
@@ -277,7 +270,7 @@ fn parsing(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
             }
             TokenType::ClosedParenthesis => {
                 if previous_token_type == TokenType::Operation {
-                    return Err(format!("Invalid operation in position {}", pos));
+                    return Err(format!("Invalid operation in position \"{}\"", pos));
                 }
                 processed_tokens.push(token);
                 previous_token_type = TokenType::ClosedParenthesis;
@@ -366,7 +359,7 @@ fn calculate(postfix_exp: Vec<Token>) -> Result<Decimal, String> {
                 let op1 = result.pop().unwrap();
                 result.push(token.execute(op1, op2)?)
             }
-            _ => return Err("Found unexpected token".to_string()),
+            _ => return Err(format!("Found unexpected token {:?}", token)),
         }
     }
     match result.len() {
